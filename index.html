@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интеллектуальная Битва</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Подключаем Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Заголовок с информацией об игроках -->
+    <header id="game-header">
+        <div class="player-info" id="player-info-container">
+            <!-- Игроки будут добавлены через JavaScript -->
+        </div>
+        <div class="game-status" id="game-status">
+            Ожидание игроков...
+        </div>
+    </header>
+
+    <!-- Основная игровая зона -->
+    <main id="game-container">
+        <!-- Индикатор битвы -->
+        <div id="battle-indicator" class="battle-indicator hidden">
+            <span id="battle-text"></span>
+        </div>
+
+        <!-- Таймер -->
+        <div id="timer" class="timer hidden">
+            <span id="timer-value">10</span>
+        </div>
+
+        <!-- Карта игры -->
+        <div id="map-container" class="map-container">
+            <div id="game-map" class="game-map">
+                <!-- 15 зон будут созданы через JavaScript -->
+            </div>
+        </div>
+
+        <!-- Секция с вопросами -->
+        <div id="question-section" class="question-section hidden">
+            <div id="question-text" class="question-text"></div>
+            
+            <!-- Для цифровых вопросов -->
+            <div id="numeric-answer" class="numeric-answer hidden">
+                <input type="number" id="answer-input" class="answer-input" placeholder="Введите число">
+                <button id="submit-answer" class="submit-btn">Ответить</button>
+            </div>
+
+            <!-- Для вопросов с вариантами -->
+            <div id="multiple-choice" class="answer-options hidden">
+                <button class="option-btn" data-option="A"></button>
+                <button class="option-btn" data-option="B"></button>
+                <button class="option-btn" data-option="C"></button>
+            </div>
+        </div>
+
+        <!-- Таблица результатов -->
+        <div id="results-section" class="results-section hidden">
+            <div class="results-title">🏆 ИТОГИ ИГРЫ 🏆</div>
+            <div id="final-map" class="final-map"></div>
+            <div id="results-table" class="results-table"></div>
+            <button id="new-game-btn" class="new-game-btn">Новая игра</button>
+        </div>
+    </main>
+
+    <!-- Подключаем JavaScript -->
+    <script src="game.js"></script>
+</body>
+</html>

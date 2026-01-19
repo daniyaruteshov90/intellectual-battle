@@ -1,0 +1,460 @@
+/* ============================================
+   БАЗОВЫЕ СТИЛИ
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Поддержка Telegram темы */
+    background: var(--tg-theme-bg-color, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    color: var(--tg-theme-text-color, #ffffff);
+}
+
+/* ============================================
+   ЗАГОЛОВОК С ИГРОКАМИ
+   ============================================ */
+
+#game-header {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.player-info {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.player-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+}
+
+.player-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+    flex-shrink: 0;
+}
+
+.player-name {
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.player-score {
+    color: #ffd700;
+    font-size: 11px;
+}
+
+.game-status {
+    background: rgba(52, 152, 219, 0.8);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* ============================================
+   ОСНОВНОЙ КОНТЕЙНЕР
+   ============================================ */
+
+#game-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ============================================
+   КАРТА ИГРЫ
+   ============================================ */
+
+.map-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow: auto;
+}
+
+.game-map {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.zone {
+    aspect-ratio: 1;
+    border: 2px solid #444;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    font-size: 16px;
+    color: white;
+    user-select: none;
+}
+
+.zone:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.zone.neutral {
+    background: linear-gradient(135deg, #555, #666);
+    color: #aaa;
+}
+
+.zone.red {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.zone.green {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.zone.yellow {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+}
+
+.zone.capital {
+    border: 3px solid gold;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+}
+
+.zone.capital::after {
+    content: '⭐';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 16px;
+}
+
+.zone.selectable {
+    animation: pulse 1s infinite;
+    border: 3px solid #3498db;
+}
+
+.zone.under-attack {
+    border: 3px solid #e74c3c;
+    animation: shake 0.5s infinite;
+}
+
+/* ============================================
+   АНИМАЦИИ
+   ============================================ */
+
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+    }
+    50% { 
+        transform: scale(1.1);
+        box-shadow: 0 0 30px rgba(52, 152, 219, 0.8);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* ============================================
+   ИНДИКАТОРЫ И ТАЙМЕР
+   ============================================ */
+
+.battle-indicator {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(231, 76, 60, 0.95);
+    color: white;
+    padding: 10px 30px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+.timer {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    background: #e74c3c;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 20px;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    z-index: 100;
+}
+
+/* ============================================
+   СЕКЦИЯ ВОПРОСОВ
+   ============================================ */
+
+.question-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.95);
+    padding: 20px;
+    color: white;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.question-text {
+    font-size: 16px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+/* Цифровой ответ */
+.numeric-answer {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.answer-input {
+    flex: 1;
+    padding: 15px;
+    font-size: 24px;
+    text-align: center;
+    border: 3px solid #3498db;
+    border-radius: 10px;
+    background: white;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+.submit-btn {
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+/* Варианты ответов */
+.answer-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.option-btn {
+    padding: 15px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.option-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.option-btn.correct {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+.option-btn.incorrect {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* ============================================
+   РЕЗУЛЬТАТЫ
+   ============================================ */
+
+.results-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #1a1a2e;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.results-title {
+    color: #ffd700;
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.final-map {
+    margin-bottom: 20px;
+}
+
+.results-table {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.results-row {
+    display: grid;
+    grid-template-columns: 60px 40px 2fr 1fr;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    align-items: center;
+    gap: 10px;
+}
+
+.results-row.header {
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: bold;
+    color: #3498db;
+}
+
+.place {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.place.first { color: #ffd700; }
+.place.second { color: #c0c0c0; }
+.place.third { color: #cd7f32; }
+
+.new-game-btn {
+    padding: 15px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.new-game-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+/* ============================================
+   УТИЛИТЫ
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   АДАПТИВНОСТЬ ДЛЯ ТЕЛЕФОНА
+   ============================================ */
+
+@media (max-width: 768px) {
+    .game-map {
+        gap: 2px;
+        padding: 10px;
+    }
+    
+    .zone {
+        font-size: 12px;
+        border-radius: 4px;
+    }
+    
+    .zone.capital::after {
+        font-size: 12px;
+    }
+    
+    .question-text {
+        font-size: 14px;
+    }
+    
+    .answer-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .player-card {
+        min-width: 100px;
+    }
+}
+
+/* Горизонтальная ориентация телефона */
+@media (max-height: 500px) {
+    #game-header {
+        padding: 5px 10px;
+    }
+    
+    .map-container {
+        padding: 10px;
+    }
+    
+    .question-section {
+        max-height: 50vh;
+    }
+}
