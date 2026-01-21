@@ -2,22 +2,19 @@
 // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================
 
-// Telegram Web App
 const tg = window.Telegram?.WebApp;
 
-// Игровое состояние
 const gameState = {
     players: [],
     currentPlayer: null,
     zones: [],
-    phase: 'WAITING', // WAITING, TERRITORY_SELECTION, BATTLE, FINISHED
+    phase: 'WAITING',
     currentQuestion: null,
     roundNumber: 0,
-    attackSequence: [0, 1, 2, 1, 2, 0, 2, 0, 1, 0, 2, 1], // Порядок атак
+    attackSequence: [0, 1, 2, 1, 2, 0, 2, 0, 1, 0, 2, 1],
     attackIndex: 0
 };
 
-// Цвета игроков
 const PLAYER_COLORS = ['red', 'yellow', 'green'];
 const COLOR_NAMES = {
     red: 'Красный',
@@ -29,24 +26,17 @@ const COLOR_NAMES = {
 // ИНИЦИАЛИЗАЦИЯ ИГРЫ
 // ============================================
 
-// Запуск при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🎮 Игра загружается...');
     
-    // Настройка Telegram Web App
     if (tg) {
         tg.ready();
         tg.expand();
         console.log('✅ Telegram Web App готов');
     }
     
-    // Создаем карту
     createMap();
-    
-    // Инициализируем игроков (для теста - 3 бота)
     initializePlayers();
-    
-    // Начинаем игру
     startGame();
 });
 
@@ -58,7 +48,6 @@ function createMap() {
     const mapElement = document.getElementById('game-map');
     mapElement.innerHTML = '';
     
-    // Создаем 15 зон
     for (let i = 1; i <= 15; i++) {
         const zone = document.createElement('div');
         zone.className = 'zone neutral';
@@ -66,12 +55,10 @@ function createMap() {
         zone.textContent = i;
         zone.dataset.zoneId = i;
         
-        // Добавляем обработчик клика
         zone.addEventListener('click', () => handleZoneClick(i));
         
         mapElement.appendChild(zone);
         
-        // Сохраняем в состоянии
         gameState.zones.push({
             id: i,
             owner: null,
@@ -87,7 +74,6 @@ function createMap() {
 // ============================================
 
 function initializePlayers() {
-    // Создаем 3 игроков для теста
     const playerNames = ['Игрок 1', 'Игрок 2', 'Игрок 3'];
     
     for (let i = 0; i < 3; i++) {
@@ -102,9 +88,7 @@ function initializePlayers() {
         });
     }
     
-    // Отображаем игроков в шапке
     updatePlayerDisplay();
-    
     console.log('✅ Игроки созданы:', gameState.players);
 }
 
@@ -133,17 +117,12 @@ function updatePlayerDisplay() {
 function startGame() {
     console.log('🎮 Начинаем игру!');
     
-    // Распределяем столицы
     distributeCapitals();
-    
-    // Обновляем статус
     updateGameStatus('Раунд 1: Выбор территорий');
     
-    // Переходим к первому раунду
     gameState.phase = 'TERRITORY_SELECTION';
     gameState.roundNumber = 1;
     
-    // Показываем первый вопрос через 2 секунды
     setTimeout(() => {
         showTerritoryQuestion();
     }, 2000);
@@ -157,12 +136,10 @@ function distributeCapitals() {
     const availableZones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     const capitals = [];
     
-    // Выбираем 3 столицы так, чтобы между ними была минимум 1 зона
     while (capitals.length < 3) {
         const randomIndex = Math.floor(Math.random() * availableZones.length);
         const zoneId = availableZones[randomIndex];
         
-        // Проверяем, не слишком ли близко к другим столицам
         const isTooClose = capitals.some(capitalId => {
             return areZonesAdjacent(zoneId, capitalId) || zoneId === capitalId;
         });
@@ -172,18 +149,15 @@ function distributeCapitals() {
         }
     }
     
-    // Назначаем столицы игрокам
     gameState.players.forEach((player, index) => {
         const capitalZoneId = capitals[index];
         player.capital = capitalZoneId;
         player.territories.push(capitalZoneId);
         
-        // Обновляем зону
         const zone = gameState.zones.find(z => z.id === capitalZoneId);
         zone.owner = player.id;
         zone.isCapital = true;
         
-        // Визуально обновляем
         const zoneElement = document.getElementById(`zone-${capitalZoneId}`);
         zoneElement.className = `zone ${player.color} capital`;
     });
@@ -196,7 +170,6 @@ function distributeCapitals() {
 // ============================================
 
 function areZonesAdjacent(zone1, zone2) {
-    // Карта 5x3, проверяем соседство
     const getRow = (z) => Math.floor((z - 1) / 5);
     const getCol = (z) => (z - 1) % 5;
     
@@ -208,11 +181,9 @@ function areZonesAdjacent(zone1, zone2) {
     const rowDiff = Math.abs(row1 - row2);
     const colDiff = Math.abs(col1 - col2);
     
-    // Соседи если разница 1 по строке ИЛИ столбцу (но не по диагонали)
     return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
 }
 
-// Получить соседние зоны
 function getAdjacentZones(zoneId) {
     return gameState.zones
         .filter(zone => areZonesAdjacent(zoneId, zone.id))
@@ -234,26 +205,24 @@ function updateGameStatus(message) {
 function showTerritoryQuestion() {
     console.log('❓ Показываем вопрос на выбор территории');
     
-    // Получаем случайный цифровой вопрос из базы
-    const question = window.getRandomNumericQuestion();
+    // Проверяем есть ли функция получения вопросов
+    let question;
+    if (window.getRandomNumericQuestion) {
+        question = window.getRandomNumericQuestion();
+    } else {
+        // Запасной вопрос если questions.js не загрузился
+        question = {
+            text: 'Сколько областей в Казахстане?',
+            answer: 17,
+            type: 'numeric'
+        };
+    }
     
     gameState.currentQuestion = question;
-    
-    // Показываем вопрос
     showQuestion(question);
     
-    // Запускаем таймер на 15 секунд
-    startTimer(15);
-}
-    
-    gameState.currentQuestion = question;
-    
-    // Показываем вопрос
-    showQuestion(question);
-    
-    // Автоматически отвечаем за ботов (для теста)
     setTimeout(() => {
-        simulateBotAnswers(question);
+        simulateBotAnswersOld(question);
     }, 3000);
 }
 
@@ -270,23 +239,20 @@ function showQuestion(question) {
         numericAnswer.classList.remove('hidden');
         multipleChoice.classList.add('hidden');
         
-        // Очищаем поле ввода
         document.getElementById('answer-input').value = '';
         
-        // Обработчик отправки
         document.getElementById('submit-answer').onclick = () => {
             const answer = parseInt(document.getElementById('answer-input').value);
-            submitAnswer(answer);
+            submitAnswerOld(answer);
         };
     } else {
         numericAnswer.classList.add('hidden');
         multipleChoice.classList.remove('hidden');
         
-        // Заполняем варианты
         question.options.forEach((option, index) => {
             const btn = document.querySelectorAll('.option-btn')[index];
             btn.textContent = option;
-            btn.onclick = () => submitAnswer(String.fromCharCode(65 + index));
+            btn.onclick = () => submitAnswerOld(String.fromCharCode(65 + index));
         });
     }
 }
@@ -296,20 +262,13 @@ function hideQuestion() {
 }
 
 // ============================================
-// СИМУЛЯЦИЯ ОТВЕТОВ БОТОВ (ДЛЯ ТЕСТА)
+// СИМУЛЯЦИЯ ОТВЕТОВ БОТОВ (СТАРАЯ ВЕРСИЯ)
 // ============================================
 
-function simulateBotAnswers(question) {
-    // Для тестирования - боты отвечают автоматически
+function simulateBotAnswersOld(question) {
     const answers = [];
     
     gameState.players.forEach(player => {
-        if (player.id === 0) {
-            // Игрок 1 - это вы, пропускаем
-            return;
-        }
-        
-        // Боты отвечают со случайным отклонением
         const deviation = Math.floor(Math.random() * 200) - 100;
         const answer = question.answer + deviation;
         const time = Math.random() * 5000;
@@ -321,31 +280,12 @@ function simulateBotAnswers(question) {
         });
     });
     
-    return answers;
+    console.log('🤖 Боты ответили:', answers);
+    processTerritoryAnswers(answers, question.answer);
 }
 
-function submitAnswer(answer) {
-    console.log('✅ Игрок ответил:', answer);
-    
-    // Останавливаем таймер
-    stopTimer();
-    
-    const playerAnswer = {
-        playerId: 0,  // ID игрока
-        answer: parseInt(answer),
-        time: Date.now()
-    };
-    
-    // Получаем ответы ботов
-    const botAnswers = simulateBotAnswers(gameState.currentQuestion);
-    
-    // Объединяем все ответы
-    const allAnswers = [playerAnswer, ...botAnswers];
-    
-    // Обрабатываем ответы
-    if (gameState.phase === 'TERRITORY_SELECTION') {
-        processTerritoryAnswers(allAnswers, gameState.currentQuestion.answer);
-    }
+function submitAnswerOld(answer) {
+    console.log('✅ Ответ отправлен:', answer);
 }
 
 // ============================================
@@ -353,13 +293,12 @@ function submitAnswer(answer) {
 // ============================================
 
 function processTerritoryAnswers(answers, correctAnswer) {
-    // Сортируем по близости к правильному ответу
     answers.sort((a, b) => {
         const diffA = Math.abs(a.answer - correctAnswer);
         const diffB = Math.abs(b.answer - correctAnswer);
         
         if (diffA === diffB) {
-            return a.time - b.time; // Если одинаково - по времени
+            return a.time - b.time;
         }
         return diffA - diffB;
     });
@@ -372,17 +311,14 @@ function processTerritoryAnswers(answers, correctAnswer) {
     
     hideQuestion();
     
-    // Победитель выбирает 2 зоны
     setTimeout(() => {
         selectTerritory(winner.playerId, 2);
     }, 1000);
     
-    // Второй выбирает 1 зону
     setTimeout(() => {
         selectTerritory(secondPlace.playerId, 1);
     }, 3000);
     
-    // Следующий вопрос или переход к битве
     setTimeout(() => {
         if (gameState.zones.every(z => z.owner !== null)) {
             startBattlePhase();
@@ -400,7 +336,6 @@ function selectTerritory(playerId, count) {
     const player = gameState.players[playerId];
     updateGameStatus(`${player.name} (${COLOR_NAMES[player.color]}) выбирает ${count} территорию`);
     
-    // Получаем доступные зоны (соседние с территориями игрока)
     const availableZones = [];
     player.territories.forEach(terrId => {
         const adjacent = getAdjacentZones(terrId);
@@ -412,7 +347,6 @@ function selectTerritory(playerId, count) {
         });
     });
     
-    // Автоматически выбираем случайные зоны (для ботов)
     for (let i = 0; i < count && availableZones.length > 0; i++) {
         const randomIndex = Math.floor(Math.random() * availableZones.length);
         const zoneId = availableZones[randomIndex];
@@ -430,7 +364,6 @@ function claimZone(playerId, zoneId) {
     zone.owner = playerId;
     player.territories.push(zoneId);
     
-    // Визуально обновляем
     const zoneElement = document.getElementById(`zone-${zoneId}`);
     zoneElement.className = `zone ${player.color}`;
     
@@ -467,7 +400,6 @@ function performAttack() {
         return;
     }
     
-    // Выбираем случайную соседнюю вражескую зону
     const targetZone = selectAttackTarget(attacker);
     
     if (!targetZone) {
@@ -483,7 +415,6 @@ function performAttack() {
     updateGameStatus(`${attacker.name} атакует ${defender.name}`);
     showBattleIndicator(attacker, defender);
     
-    // Показываем вопрос с вариантами
     setTimeout(() => {
         showBattleQuestion(attacker, defender, targetZone);
     }, 1500);
@@ -520,24 +451,27 @@ function hideBattleIndicator() {
 }
 
 function showBattleQuestion(attacker, defender, targetZone) {
-    const question = {
-        text: 'В каком году Казахстан получил независимость?',
-        options: ['А) 1990', 'Б) 1991', 'В) 1992'],
-        correctAnswer: 'B',
-        type: 'choice'
-    };
+    let question;
+    if (window.getRandomMultipleChoiceQuestion) {
+        question = window.getRandomMultipleChoiceQuestion();
+    } else {
+        question = {
+            text: 'В каком году Казахстан получил независимость?',
+            options: ['А) 1990', 'Б) 1991', 'В) 1992'],
+            correctAnswer: 1,
+            type: 'choice'
+        };
+    }
     
     gameState.currentQuestion = question;
     showQuestion(question);
     
-    // Симулируем ответы
     setTimeout(() => {
         simulateBattleAnswers(attacker, defender, targetZone, question);
     }, 3000);
 }
 
 function simulateBattleAnswers(attacker, defender, targetZone, question) {
-    // Случайные ответы
     const answers = ['A', 'B', 'C'];
     const attackerAnswer = answers[Math.floor(Math.random() * 3)];
     const defenderAnswer = answers[Math.floor(Math.random() * 3)];
@@ -547,26 +481,23 @@ function simulateBattleAnswers(attacker, defender, targetZone, question) {
     hideQuestion();
     hideBattleIndicator();
     
-    const attackerCorrect = attackerAnswer === question.correctAnswer;
-    const defenderCorrect = defenderAnswer === question.correctAnswer;
+    const correctLetter = String.fromCharCode(65 + question.correctAnswer);
+    const attackerCorrect = attackerAnswer === correctLetter;
+    const defenderCorrect = defenderAnswer === correctLetter;
     
     if (attackerCorrect && !defenderCorrect) {
-        // Атакующий выиграл
         transferZone(targetZone.id, attacker.id);
         attacker.score += 200;
         updateGameStatus(`${attacker.name} захватил зону!`);
     } else if (!attackerCorrect && defenderCorrect) {
-        // Защитник выиграл
         defender.score += 100;
         updateGameStatus(`${defender.name} защитил зону!`);
     } else {
-        // Ничья - зона остается у защитника
         updateGameStatus(`Ничья! Зона остается у ${defender.name}`);
     }
     
     updatePlayerDisplay();
     
-    // Следующая атака
     gameState.attackIndex++;
     setTimeout(() => {
         performAttack();
@@ -578,14 +509,10 @@ function transferZone(zoneId, newOwnerId) {
     const oldOwner = gameState.players[zone.owner];
     const newOwner = gameState.players[newOwnerId];
     
-    // Удаляем у старого владельца
     oldOwner.territories = oldOwner.territories.filter(id => id !== zoneId);
-    
-    // Добавляем новому
     newOwner.territories.push(zoneId);
     zone.owner = newOwnerId;
     
-    // Визуально обновляем
     const zoneElement = document.getElementById(`zone-${zoneId}`);
     zoneElement.className = `zone ${newOwner.color}`;
     if (zone.isCapital) {
@@ -600,12 +527,10 @@ function transferZone(zoneId, newOwnerId) {
 function endGame() {
     console.log('🏁 Игра завершена!');
     gameState.phase = 'FINISHED';
-    
     showResults();
 }
 
 function showResults() {
-    // Сортируем игроков по баллам
     const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
     
     const resultsSection = document.getElementById('results-section');
@@ -613,7 +538,6 @@ function showResults() {
     
     resultsTable.innerHTML = '';
     
-    // Заголовок
     const header = document.createElement('div');
     header.className = 'results-row header';
     header.innerHTML = `
@@ -624,7 +548,6 @@ function showResults() {
     `;
     resultsTable.appendChild(header);
     
-    // Игроки
     sortedPlayers.forEach((player, index) => {
         const places = ['first', 'second', 'third'];
         const medals = ['🥇', '🥈', '🥉'];
@@ -642,7 +565,6 @@ function showResults() {
     
     resultsSection.classList.remove('hidden');
     
-    // Кнопка новой игры
     document.getElementById('new-game-btn').onclick = () => {
         location.reload();
     };
@@ -654,53 +576,6 @@ function showResults() {
 
 function handleZoneClick(zoneId) {
     console.log(`Клик по зоне ${zoneId}`);
-    // Здесь будет логика для выбора зон игроком
-}
-// ============================================
-// ТАЙМЕР
-// ============================================
-
-let timerInterval = null;
-let timeLeft = 0;
-
-function startTimer(seconds) {
-    timeLeft = seconds;
-    updateTimerDisplay();
-    
-    const timerElement = document.getElementById('timer');
-    timerElement.classList.remove('hidden');
-    
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        updateTimerDisplay();
-        
-        if (timeLeft <= 0) {
-            stopTimer();
-            handleTimeOut();
-        }
-    }, 1000);
 }
 
-function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    
-    document.getElementById('timer').classList.add('hidden');
-}
-
-function updateTimerDisplay() {
-    document.getElementById('timer-value').textContent = timeLeft;
-}
-
-function handleTimeOut() {
-    console.log('⏰ Время вышло!');
-    
-    // Автоматически отправляем случайный ответ
-    if (gameState.phase === 'TERRITORY_SELECTION') {
-        const randomAnswer = Math.floor(Math.random() * 1000);
-        submitAnswer(randomAnswer);
-    }
-}
 console.log('✅ game.js загружен');
