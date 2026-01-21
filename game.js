@@ -234,12 +234,17 @@ function updateGameStatus(message) {
 function showTerritoryQuestion() {
     console.log('❓ Показываем вопрос на выбор территории');
     
-    // Пример цифрового вопроса
-    const question = {
-        text: 'Сколько километров составляет длина реки Урал на территории Казахстана?',
-        correctAnswer: 1084,
-        type: 'numeric'
-    };
+    // Получаем случайный цифровой вопрос из базы
+    const question = window.getRandomNumericQuestion();
+    
+    gameState.currentQuestion = question;
+    
+    // Показываем вопрос
+    showQuestion(question);
+    
+    // Запускаем таймер на 15 секунд
+    startTimer(15);
+}
     
     gameState.currentQuestion = question;
     
@@ -295,13 +300,19 @@ function hideQuestion() {
 // ============================================
 
 function simulateBotAnswers(question) {
+    // Для тестирования - боты отвечают автоматически
     const answers = [];
     
     gameState.players.forEach(player => {
-        // Генерируем случайный ответ близкий к правильному
+        if (player.id === 0) {
+            // Игрок 1 - это вы, пропускаем
+            return;
+        }
+        
+        // Боты отвечают со случайным отклонением
         const deviation = Math.floor(Math.random() * 200) - 100;
-        const answer = question.correctAnswer + deviation;
-        const time = Math.random() * 5000; // 0-5 секунд
+        const answer = question.answer + deviation;
+        const time = Math.random() * 5000;
         
         answers.push({
             playerId: player.id,
@@ -310,15 +321,31 @@ function simulateBotAnswers(question) {
         });
     });
     
-    console.log('🤖 Боты ответили:', answers);
-    
-    // Определяем победителей
-    processTerritoryAnswers(answers, question.correctAnswer);
+    return answers;
 }
 
 function submitAnswer(answer) {
-    console.log('✅ Ответ отправлен:', answer);
-    // Здесь будет логика для реального игрока
+    console.log('✅ Игрок ответил:', answer);
+    
+    // Останавливаем таймер
+    stopTimer();
+    
+    const playerAnswer = {
+        playerId: 0,  // ID игрока
+        answer: parseInt(answer),
+        time: Date.now()
+    };
+    
+    // Получаем ответы ботов
+    const botAnswers = simulateBotAnswers(gameState.currentQuestion);
+    
+    // Объединяем все ответы
+    const allAnswers = [playerAnswer, ...botAnswers];
+    
+    // Обрабатываем ответы
+    if (gameState.phase === 'TERRITORY_SELECTION') {
+        processTerritoryAnswers(allAnswers, gameState.currentQuestion.answer);
+    }
 }
 
 // ============================================
@@ -629,5 +656,51 @@ function handleZoneClick(zoneId) {
     console.log(`Клик по зоне ${zoneId}`);
     // Здесь будет логика для выбора зон игроком
 }
+// ============================================
+// ТАЙМЕР
+// ============================================
 
+let timerInterval = null;
+let timeLeft = 0;
+
+function startTimer(seconds) {
+    timeLeft = seconds;
+    updateTimerDisplay();
+    
+    const timerElement = document.getElementById('timer');
+    timerElement.classList.remove('hidden');
+    
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        
+        if (timeLeft <= 0) {
+            stopTimer();
+            handleTimeOut();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    
+    document.getElementById('timer').classList.add('hidden');
+}
+
+function updateTimerDisplay() {
+    document.getElementById('timer-value').textContent = timeLeft;
+}
+
+function handleTimeOut() {
+    console.log('⏰ Время вышло!');
+    
+    // Автоматически отправляем случайный ответ
+    if (gameState.phase === 'TERRITORY_SELECTION') {
+        const randomAnswer = Math.floor(Math.random() * 1000);
+        submitAnswer(randomAnswer);
+    }
+}
 console.log('✅ game.js загружен');
