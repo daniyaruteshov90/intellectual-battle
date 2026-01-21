@@ -458,3 +458,54 @@ body {
         max-height: 50vh;
     }
 }
+/* ============================================
+   АНИМАЦИИ ДЛЯ ВЫБОРА ЗОН
+   ============================================ */
+
+.zone.selectable {
+    animation: pulse 1s infinite;
+    border: 3px solid #3498db !important;
+    cursor: pointer;
+}
+
+.zone.selectable:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 30px rgba(52, 152, 219, 0.8);
+}
+
+.zone.under-attack {
+    animation: pulse-red 0.8s infinite;
+    border: 3px solid #e74c3c !important;
+    cursor: pointer;
+}
+
+.zone.under-attack:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 30px rgba(231, 76, 60, 0.8);
+}
+
+@keyframes pulse-red {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+    }
+    50% { 
+        transform: scale(1.08);
+        box-shadow: 0 0 30px rgba(231, 76, 60, 0.9);
+    }
+}
+
+/* Анимация для столицы под атакой */
+.zone.capital.under-attack::after {
+    animation: star-pulse 0.5s infinite;
+}
+
+@keyframes star-pulse {
+    0%, 100% { 
+        font-size: 16px;
+    }
+    50% { 
+        font-size: 20px;
+        text-shadow: 0 0 10px gold;
+    }
+}

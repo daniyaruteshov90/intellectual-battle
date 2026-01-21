@@ -12,7 +12,15 @@ const gameState = {
     currentQuestion: null,
     roundNumber: 0,
     attackSequence: [0, 1, 2, 1, 2, 0, 2, 0, 1, 0, 2, 1],
-    attackIndex: 0
+    attackIndex: 0,
+    // НОВЫЕ ПОЛЯ
+    waitingForZoneSelection: false,
+    zonesToSelect: 0,
+    selectingPlayer: null,
+    waitingForAttackTarget: false,
+    currentAttacker: null,
+    isCapitalAttack: false,
+    capitalAttackQuestionsLeft: 0
 };
 
 const PLAYER_COLORS = ['red', 'yellow', 'green'];
@@ -311,14 +319,33 @@ function processTerritoryAnswers(answers, correctAnswer) {
     
     hideQuestion();
     
-    setTimeout(() => {
-        selectTerritory(winner.playerId, 2);
-    }, 1000);
+    // НОВАЯ ЛОГИКА: если победитель - игрок (ID 0), даём ему выбрать зоны
+    if (winner.playerId === 0) {
+        // Игрок выбирает 2 зоны
+        setTimeout(() => {
+            enableZoneSelection(winner.playerId, 2);
+        }, 1000);
+    } else {
+        // Бот выбирает автоматически
+        setTimeout(() => {
+            selectTerritory(winner.playerId, 2);
+        }, 1000);
+    }
     
-    setTimeout(() => {
-        selectTerritory(secondPlace.playerId, 1);
-    }, 3000);
+    // Второй выбирает 1 зону
+    if (secondPlace.playerId === 0) {
+        // Игрок выбирает 1 зону
+        setTimeout(() => {
+            enableZoneSelection(secondPlace.playerId, 1);
+        }, 3000);
+    } else {
+        // Бот выбирает автоматически
+        setTimeout(() => {
+            selectTerritory(secondPlace.playerId, 1);
+        }, 3000);
+    }
     
+    // Проверяем заполнена ли карта
     setTimeout(() => {
         if (gameState.zones.every(z => z.owner !== null)) {
             startBattlePhase();
@@ -356,7 +383,51 @@ function selectTerritory(playerId, count) {
         availableZones.splice(randomIndex, 1);
     }
 }
+// ============================================
+// РУЧНОЙ ВЫБОР ЗОН ИГРОКОМ
+// ============================================
 
+function enableZoneSelection(playerId, count) {
+    const player = gameState.players[playerId];
+    
+    gameState.waitingForZoneSelection = true;
+    gameState.zonesToSelect = count;
+    gameState.selectingPlayer = playerId;
+    
+    updateGameStatus(`${player.name}: выберите ${count} соседнюю зону`);
+    
+    // Подсвечиваем доступные зоны
+    highlightSelectableZones(playerId);
+}
+
+function highlightSelectableZones(playerId) {
+    const player = gameState.players[playerId];
+    const availableZones = [];
+    
+    player.territories.forEach(terrId => {
+        const adjacent = getAdjacentZones(terrId);
+        adjacent.forEach(zoneId => {
+            const zone = gameState.zones.find(z => z.id === zoneId);
+            if (zone.owner === null && !availableZones.includes(zoneId)) {
+                availableZones.push(zoneId);
+            }
+        });
+    });
+    
+    // Добавляем класс для подсветки
+    availableZones.forEach(zoneId => {
+        const zoneElement = document.getElementById(`zone-${zoneId}`);
+        zoneElement.classList.add('selectable');
+    });
+    
+    console.log('✨ Доступные зоны:', availableZones);
+}
+
+function removeZoneHighlights() {
+    document.querySelectorAll('.zone').forEach(zone => {
+        zone.classList.remove('selectable');
+    });
+}
 function claimZone(playerId, zoneId) {
     const player = gameState.players[playerId];
     const zone = gameState.zones.find(z => z.id === zoneId);
@@ -400,14 +471,98 @@ function performAttack() {
         return;
     }
     
-    const targetZone = selectAttackTarget(attacker);
+    // Если атакующий - игрок (ID 0), даём ему выбрать цель
+    if (attackerIndex === 0) {
+        enableAttackTargetSelection(attacker);
+    } else {
+        // Бот выбирает автоматически
+        const targetZone = selectAttackTarget(attacker);
+        
+        if (!targetZone) {
+            gameState.attackIndex++;
+            performAttack();
+            return;
+        }
+        
+        executeAttack(attacker, targetZone);
+    }
+}
+// ============================================
+// ВЫБОР ЦЕЛИ АТАКИ ИГРОКОМ
+// ============================================
+
+function enableAttackTargetSelection(attacker) {
+    gameState.waitingForAttackTarget = true;
+    gameState.currentAttacker = attacker;
     
-    if (!targetZone) {
-        gameState.attackIndex++;
-        performAttack();
+    updateGameStatus(`${attacker.name}: выберите зону для атаки`);
+    
+    // Подсвечиваем вражеские зоны
+    highlightAttackableZones(attacker);
+}
+
+function highlightAttackableZones(attacker) {
+    const possibleTargets = [];
+    
+    attacker.territories.forEach(terrId => {
+        const adjacent = getAdjacentZones(terrId);
+        adjacent.forEach(zoneId => {
+            const zone = gameState.zones.find(z => z.id === zoneId);
+            if (zone.owner !== null && zone.owner !== attacker.id) {
+                if (!possibleTargets.includes(zoneId)) {
+                    possibleTargets.push(zoneId);
+                }
+            }
+        });
+    });
+    
+    // Подсвечиваем доступные цели
+    possibleTargets.forEach(zoneId => {
+        const zoneElement = document.getElementById(`zone-${zoneId}`);
+        zoneElement.classList.add('under-attack');
+    });
+    
+    console.log('🎯 Доступные цели:', possibleTargets);
+}
+
+function handleAttackTargetSelection(zoneId) {
+    const zone = gameState.zones.find(z => z.id === zoneId);
+    const attacker = gameState.currentAttacker;
+    
+    // Проверяем что цель валидная
+    if (zone.owner === null || zone.owner === attacker.id) {
+        console.log('❌ Неверная цель');
         return;
     }
     
+    // Проверяем что цель соседняя или это столица
+    const isAdjacent = attacker.territories.some(terrId => 
+        areZonesAdjacent(terrId, zoneId)
+    );
+    
+    if (isAdjacent || zone.isCapital) {
+        // Убираем подсветку
+        removeAttackHighlights();
+        gameState.waitingForAttackTarget = false;
+        
+        // Если это столица - специальная атака
+        if (zone.isCapital) {
+            startCapitalAttack(attacker, zone);
+        } else {
+            executeAttack(attacker, zone);
+        }
+    } else {
+        console.log('❌ Цель должна быть соседней или столицей');
+    }
+}
+
+function removeAttackHighlights() {
+    document.querySelectorAll('.zone').forEach(zone => {
+        zone.classList.remove('under-attack');
+    });
+}
+
+function executeAttack(attacker, targetZone) {
     const defender = gameState.players[targetZone.owner];
     
     console.log(`⚔️ ${attacker.name} атакует ${defender.name}, зона ${targetZone.id}`);
@@ -419,7 +574,6 @@ function performAttack() {
         showBattleQuestion(attacker, defender, targetZone);
     }, 1500);
 }
-
 function selectAttackTarget(attacker) {
     const possibleTargets = [];
     
@@ -576,6 +730,42 @@ function showResults() {
 
 function handleZoneClick(zoneId) {
     console.log(`Клик по зоне ${zoneId}`);
+    
+    // Если ждём выбора зоны
+    if (gameState.waitingForZoneSelection) {
+        const zone = gameState.zones.find(z => z.id === zoneId);
+        const player = gameState.players[gameState.selectingPlayer];
+        
+        // Проверяем что зона доступна для выбора
+        const isAdjacent = player.territories.some(terrId => 
+            areZonesAdjacent(terrId, zoneId)
+        );
+        
+        if (zone.owner === null && isAdjacent) {
+            // Захватываем зону
+            claimZone(gameState.selectingPlayer, zoneId);
+            gameState.zonesToSelect--;
+            
+            if (gameState.zonesToSelect <= 0) {
+                // Все зоны выбраны
+                gameState.waitingForZoneSelection = false;
+                removeZoneHighlights();
+                updateGameStatus('Выбор завершён');
+            } else {
+                // Обновляем подсветку
+                removeZoneHighlights();
+                highlightSelectableZones(gameState.selectingPlayer);
+                updateGameStatus(`${player.name}: выберите ещё ${gameState.zonesToSelect} зону`);
+            }
+        } else {
+            console.log('❌ Эта зона недоступна');
+        }
+    }
+    
+    // Если ждём выбора цели для атаки
+    if (gameState.waitingForAttackTarget) {
+        handleAttackTargetSelection(zoneId);
+    }
 }
 
 console.log('✅ game.js загружен');
