@@ -44,8 +44,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     createMap();
-    initializePlayers();
-    startGame();
+    
+    // ПРОВЕРЯЕМ: хотим ли мы многопользовательскую игру
+    const urlParams = new URLSearchParams(window.location.search);
+    const multiplayer = urlParams.get('multiplayer');
+    
+    if (multiplayer === 'true' && window.initializeMultiplayer) {
+        // Многопользовательская игра
+        console.log('🌐 Запуск многопользовательской игры');
+        initializeMultiplayer();
+    } else {
+        // Одиночная игра с ботами
+        console.log('🤖 Запуск игры с ботами');
+        initializePlayers();
+        startGame();
+    }
 });
 
 // ============================================
@@ -574,6 +587,132 @@ function executeAttack(attacker, targetZone) {
         showBattleQuestion(attacker, defender, targetZone);
     }, 1500);
 }
+
+// ============================================
+// АТАКА НА СТОЛИЦУ
+// ============================================
+
+function startCapitalAttack(attacker, capitalZone) {
+    const defender = gameState.players[capitalZone.owner];
+    
+    gameState.isCapitalAttack = true;
+    gameState.capitalAttackQuestionsLeft = 3;
+    
+    updateGameStatus(`⚠️ АТАКА НА СТОЛИЦУ! ${attacker.name} → ${defender.name}`);
+    
+    const indicator = document.getElementById('battle-indicator');
+    const text = document.getElementById('battle-text');
+    text.textContent = `⚠️ АТАКА НА СТОЛИЦУ! ${COLOR_NAMES[attacker.color]} → ⭐${COLOR_NAMES[defender.color]}`;
+    indicator.style.background = 'rgba(231, 76, 60, 0.95)';
+    indicator.classList.remove('hidden');
+    
+    setTimeout(() => {
+        continueCapitalAttack(attacker, defender, capitalZone);
+    }, 2000);
+}
+
+function continueCapitalAttack(attacker, defender, capitalZone) {
+    if (gameState.capitalAttackQuestionsLeft <= 0) {
+        // Атакующий выиграл все 3 вопроса - столица захвачена!
+        captureCapital(attacker, defender, capitalZone);
+        return;
+    }
+    
+    updateGameStatus(`Вопрос ${4 - gameState.capitalAttackQuestionsLeft}/3`);
+    
+    setTimeout(() => {
+        showCapitalAttackQuestion(attacker, defender, capitalZone);
+    }, 1000);
+}
+
+function showCapitalAttackQuestion(attacker, defender, capitalZone) {
+    let question;
+    if (window.getRandomMultipleChoiceQuestion) {
+        question = window.getRandomMultipleChoiceQuestion();
+    } else {
+        question = {
+            text: 'Вопрос для атаки на столицу?',
+            options: ['А) Вариант 1', 'Б) Вариант 2', 'В) Вариант 3'],
+            correctAnswer: 1,
+            type: 'choice'
+        };
+    }
+    
+    gameState.currentQuestion = question;
+    gameState.currentCapitalAttackData = { attacker, defender, capitalZone };
+    
+    showQuestion(question);
+    
+    setTimeout(() => {
+        simulateCapitalAttackAnswers();
+    }, 3000);
+}
+
+function simulateCapitalAttackAnswers() {
+    const { attacker, defender, capitalZone } = gameState.currentCapitalAttackData;
+    const question = gameState.currentQuestion;
+    
+    const answers = ['A', 'B', 'C'];
+    const attackerAnswer = answers[Math.floor(Math.random() * 3)];
+    const defenderAnswer = answers[Math.floor(Math.random() * 3)];
+    
+    hideQuestion();
+    
+    const correctLetter = String.fromCharCode(65 + question.correctAnswer);
+    const attackerCorrect = attackerAnswer === correctLetter;
+    const defenderCorrect = defenderAnswer === correctLetter;
+    
+    if (attackerCorrect && !defenderCorrect) {
+        // Атакующий выиграл вопрос
+        gameState.capitalAttackQuestionsLeft--;
+        updateGameStatus(`${attacker.name} выиграл вопрос! Осталось: ${gameState.capitalAttackQuestionsLeft}`);
+        
+        setTimeout(() => {
+            if (gameState.capitalAttackQuestionsLeft > 0) {
+                continueCapitalAttack(attacker, defender, capitalZone);
+            } else {
+                captureCapital(attacker, defender, capitalZone);
+            }
+        }, 2000);
+    } else {
+        // Защитник выиграл или ничья - столица защищена
+        defender.score += 100;
+        gameState.isCapitalAttack = false;
+        updateGameStatus(`${defender.name} защитил столицу!`);
+        hideBattleIndicator();
+        updatePlayerDisplay();
+        
+        gameState.attackIndex++;
+        setTimeout(() => {
+            performAttack();
+        }, 2000);
+    }
+}
+
+function captureCapital(attacker, defender, capitalZone) {
+    updateGameStatus(`🏆 ${attacker.name} ЗАХВАТИЛ СТОЛИЦУ ${defender.name}!`);
+    
+    // Защитник проигрывает
+    defender.isEliminated = true;
+    
+    // Атакующий получает все территории защитника
+    defender.territories.forEach(terrId => {
+        transferZone(terrId, attacker.id);
+    });
+    
+    // Атакующий получает бонус
+    attacker.score += 500;
+    
+    gameState.isCapitalAttack = false;
+    hideBattleIndicator();
+    updatePlayerDisplay();
+    
+    gameState.attackIndex++;
+    setTimeout(() => {
+        performAttack();
+    }, 3000);
+}
+
 function selectAttackTarget(attacker) {
     const possibleTargets = [];
     
