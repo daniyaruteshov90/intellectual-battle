@@ -350,9 +350,23 @@ function processTerritoryAnswers(answers, correctAnswer) {
 }
 
 function showAnswerResults(answers, correctAnswer, winner, secondPlace) {
+    console.log('📊 Показываем результаты:', answers);
+    
+    // Останавливаем таймер
+    stopTimer();
+    
     const resultsSection = document.getElementById('answer-results');
     const correctAnswerDiv = document.getElementById('correct-answer');
     const playersAnswersDiv = document.getElementById('players-answers');
+    
+    // Проверяем что элементы найдены
+    if (!resultsSection || !correctAnswerDiv || !playersAnswersDiv) {
+        console.error('❌ Элементы для результатов не найдены!');
+        console.error('resultsSection:', resultsSection);
+        console.error('correctAnswerDiv:', correctAnswerDiv);
+        console.error('playersAnswersDiv:', playersAnswersDiv);
+        return;
+    }
     
     // Показываем правильный ответ
     correctAnswerDiv.innerHTML = `
@@ -365,7 +379,14 @@ function showAnswerResults(answers, correctAnswer, winner, secondPlace) {
     
     // Показываем ответы игроков
     answers.forEach((answer, index) => {
-        const player = gameState.players[answer.playerId];
+        // Ищем игрока по ID
+        const player = gameState.players.find(p => p.id === answer.playerId);
+        
+        if (!player) {
+            console.error('❌ Игрок не найден:', answer.playerId);
+            return;
+        }
+        
         const difference = Math.abs(answer.answer - correctAnswer);
         const timeSeconds = (answer.time / 1000).toFixed(2);
         
@@ -388,13 +409,20 @@ function showAnswerResults(answers, correctAnswer, winner, secondPlace) {
     });
     
     // Показываем экран
+    console.log('✅ Показываем экран результатов');
     resultsSection.classList.remove('hidden');
     
     // Кнопка продолжить
-    document.getElementById('continue-btn').onclick = () => {
-        resultsSection.classList.add('hidden');
-        continueAfterResults(winner, secondPlace);
-    };
+    const continueBtn = document.getElementById('continue-btn');
+    if (continueBtn) {
+        continueBtn.onclick = () => {
+            console.log('👆 Нажата кнопка Продолжить');
+            resultsSection.classList.add('hidden');
+            continueAfterResults(winner, secondPlace);
+        };
+    } else {
+        console.error('❌ Кнопка continue-btn не найдена!');
+    }
 }
 
 function continueAfterResults(winner, secondPlace) {
