@@ -42,6 +42,14 @@
             </div>
         </div>
 
+        <!-- Экран результатов ответов -->
+        <div id="answer-results" class="answer-results hidden">
+            <div class="results-title">Результаты ответов</div>
+            <div id="correct-answer" class="correct-answer"></div>
+            <div id="players-answers" class="players-answers"></div>
+            <button id="continue-btn" class="continue-btn">Продолжить</button>
+        </div>
+
         <!-- Секция с вопросами -->
         <div id="question-section" class="question-section hidden">
             <div id="question-text" class="question-text"></div>
@@ -69,8 +77,9 @@
         </div>
     </main>
 
-  <!-- Подключаем JavaScript -->
+        <!-- Подключаем JavaScript -->
         <script src="questions.js"></script>
+        <script src="multiplayer.js"></script>
         <script src="game.js"></script>
 </body>
 </html>

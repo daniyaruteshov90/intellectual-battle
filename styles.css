@@ -509,3 +509,126 @@ body {
         text-shadow: 0 0 10px gold;
     }
 }
+/* ============================================
+   ЭКРАН РЕЗУЛЬТАТОВ ОТВЕТОВ
+   ============================================ */
+
+.answer-results {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.95);
+    padding: 20px;
+    color: white;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.answer-results .results-title {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #3498db;
+}
+
+.correct-answer {
+    background: rgba(46, 204, 113, 0.2);
+    border: 2px solid #2ecc71;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.correct-answer-label {
+    font-size: 14px;
+    color: #95a5a6;
+    margin-bottom: 5px;
+}
+
+.correct-answer-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2ecc71;
+}
+
+.players-answers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.player-answer-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 80px;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-answer-card.winner {
+    background: rgba(46, 204, 113, 0.2);
+    border: 2px solid #2ecc71;
+}
+
+.player-answer-card.second {
+    background: rgba(52, 152, 219, 0.2);
+    border: 2px solid #3498db;
+}
+
+.player-answer-rank {
+    font-size: 24px;
+    text-align: center;
+}
+
+.player-answer-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.player-answer-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.player-answer-name {
+    font-weight: bold;
+}
+
+.player-answer-value {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.player-answer-time {
+    text-align: right;
+    font-size: 12px;
+    color: #95a5a6;
+}
+
+.continue-btn {
+    width: 100%;
+    margin-top: 15px;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.continue-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
