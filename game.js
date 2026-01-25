@@ -1135,4 +1135,6 @@ function handleZoneClick(zoneId) {
     }
 }
 
+
+
 console.log('✅ game.js загружен');
