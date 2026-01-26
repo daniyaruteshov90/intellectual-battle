@@ -22,6 +22,7 @@ const gameState = {
     isCapitalAttack: false,
     capitalAttackQuestionsLeft: 0
 };
+let playerAnswer = null; // Ответ игрока
 
 const PLAYER_COLORS = ['red', 'yellow', 'green'];
 const COLOR_NAMES = {
@@ -119,14 +120,18 @@ function updatePlayerDisplay() {
     
     gameState.players.forEach(player => {
         const card = document.createElement('div');
-        card.className = 'player-card';
+        // Добавляем класс current-player если это игрок 0 (вы)
+        const currentClass = player.id === 0 ? 'current-player' : '';
+        card.className = `player-card ${currentClass}`;
+        
         card.innerHTML = `
             <div class="player-color" style="background: ${player.color};"></div>
             <div>
-                <div class="player-name">${player.name}</div>
+                <div class="player-name">${player.name}${player.id === 0 ? ' (ВЫ)' : ''}</div>
                 <div class="player-score">${player.score} баллов</div>
             </div>
         `;
+        
         container.appendChild(card);
     });
 }
@@ -230,12 +235,10 @@ function updateGameStatus(message) {
 function showTerritoryQuestion() {
     console.log('❓ Показываем вопрос на выбор территории');
     
-    // Проверяем есть ли функция получения вопросов
     let question;
     if (window.getRandomNumericQuestion) {
         question = window.getRandomNumericQuestion();
     } else {
-        // Запасной вопрос если questions.js не загрузился
         question = {
             text: 'Сколько областей в Казахстане?',
             answer: 17,
@@ -244,19 +247,20 @@ function showTerritoryQuestion() {
     }
     
     gameState.currentQuestion = question;
+    gameState.questionStartTime = Date.now(); // НОВОЕ: запоминаем время начала
     showQuestion(question);
     
-    // ⬇️ ДОБАВЬТЕ ЭТУ СТРОКУ!
     startTimer(7);
     
+    // НОВОЕ: Ждём минимум 7 секунд перед обработкой ответов
     setTimeout(() => {
-        simulateBotAnswersOld(question);
-    }, 3000);
-
-
-    setTimeout(() => {
-        simulateBotAnswersOld(question);
-    }, 3000);
+        const elapsed = Date.now() - gameState.questionStartTime;
+        const timeToWait = Math.max(0, 7000 - elapsed);
+        
+        setTimeout(() => {
+            simulateBotAnswersOld(question);
+        }, timeToWait);
+    }, 7000);
 }
 
 function showQuestion(question) {
@@ -276,8 +280,17 @@ function showQuestion(question) {
         
         document.getElementById('submit-answer').onclick = () => {
             const answer = parseInt(document.getElementById('answer-input').value);
-            submitAnswerOld(answer);
-        };
+               // НОВОЕ: Сохраняем ответ игрока
+            playerAnswer = answer;
+    
+             console.log('✅ Ваш ответ:', answer);
+    
+            // Скрываем вопрос
+            hideQuestion();
+            stopTimer();
+    
+             updateGameStatus('Ожидание других игроков...');
+         };
     } else {
         numericAnswer.classList.add('hidden');
         multipleChoice.classList.remove('hidden');
@@ -302,18 +315,34 @@ function simulateBotAnswersOld(question) {
     const answers = [];
     
     gameState.players.forEach(player => {
-        const deviation = Math.floor(Math.random() * 200) - 100;
-        const answer = question.answer + deviation;
-        const time = Math.random() * 5000;
-        
-        answers.push({
-            playerId: player.id,
-            answer: answer,
-            time: time
-        });
+        if (player.id === 0) {
+            // Игрок - используем реальный ответ
+            const answer = playerAnswer !== null ? playerAnswer : question.answer;
+            const time = Date.now() - gameState.questionStartTime;
+            
+            answers.push({
+                playerId: player.id,
+                answer: answer,
+                time: time
+            });
+        } else {
+            // Боты - генерируем случайный ответ
+            const deviation = Math.floor(Math.random() * 200) - 100;
+            const answer = question.answer + deviation;
+            const time = Math.random() * 5000;
+            
+            answers.push({
+                playerId: player.id,
+                answer: answer,
+                time: time
+            });
+        }
     });
     
-    console.log('🤖 Боты ответили:', answers);
+    // Сбрасываем ответ игрока для следующего вопроса
+    playerAnswer = null;
+    
+    console.log('🤖 Все ответы:', answers);
     processTerritoryAnswers(answers, question.answer);
 }
 
@@ -412,48 +441,91 @@ function showAnswerResults(answers, correctAnswer, winner, secondPlace) {
     console.log('✅ Показываем экран результатов');
     resultsSection.classList.remove('hidden');
     
-    // Кнопка продолжить
-    const continueBtn = document.getElementById('continue-btn');
-    if (continueBtn) {
-        continueBtn.onclick = () => {
-            console.log('👆 Нажата кнопка Продолжить');
-            resultsSection.classList.add('hidden');
-            continueAfterResults(winner, secondPlace);
-        };
+// Кнопка продолжить
+const continueBtn = document.getElementById('continue-btn');
+if (continueBtn) {
+    continueBtn.onclick = () => {
+        console.log('👆 Нажата кнопка Продолжить');
+        resultsSection.classList.add('hidden');
+        continueAfterResults(winner, secondPlace);
+    };
+}
+
+// НОВОЕ: Автопродолжение через 5 секунд
+let countdown = 5;
+const updateCountdown = () => {
+    continueBtn.textContent = `Продолжить (${countdown})`;
+    countdown--;
+    
+    if (countdown < 0) {
+        resultsSection.classList.add('hidden');
+        continueAfterResults(winner, secondPlace);
+    }
+};
+
+updateCountdown();
+const countdownInterval = setInterval(updateCountdown, 1000);
+
+// Если пользователь нажал кнопку раньше - останавливаем таймер
+continueBtn.onclick = () => {
+    clearInterval(countdownInterval);
+    resultsSection.classList.add('hidden');
+    continueAfterResults(winner, secondPlace);
+};
+}
+
+
+function continueAfterResults(winner, secondPlace) {
+    console.log('🎯 Продолжаем после результатов');
+    console.log('Победитель:', winner);
+    console.log('Второе место:', secondPlace);
+    
+    // ИСПРАВЛЕНО: Сначала победитель выбирает
+    if (winner.playerId === 0) {
+        // Если победитель - игрок
+        setTimeout(() => {
+            enableZoneSelection(winner.playerId, 2, () => {
+                // CALLBACK: После того как игрок выбрал → второе место
+                handleSecondPlaceSelection(secondPlace);
+            });
+        }, 1000);
     } else {
-        console.error('❌ Кнопка continue-btn не найдена!');
+        // Если победитель - бот
+        setTimeout(() => {
+            selectTerritory(winner.playerId, 2);
+            // После выбора бота → второе место
+            handleSecondPlaceSelection(secondPlace);
+        }, 1000);
     }
 }
 
-function continueAfterResults(winner, secondPlace) {
-    // Продолжаем как раньше
-    if (winner.playerId === 0) {
-        setTimeout(() => {
-            enableZoneSelection(winner.playerId, 2);
-        }, 1000);
-    } else {
-        setTimeout(() => {
-            selectTerritory(winner.playerId, 2);
-        }, 1000);
-    }
-    
-    if (secondPlace.playerId === 0) {
-        setTimeout(() => {
-            enableZoneSelection(secondPlace.playerId, 1);
-        }, 3000);
-    } else {
-        setTimeout(() => {
+// НОВАЯ функция для обработки второго места
+function handleSecondPlaceSelection(secondPlace) {
+    setTimeout(() => {
+        if (secondPlace.playerId === 0) {
+            // Если второе место - игрок
+            enableZoneSelection(secondPlace.playerId, 1, () => {
+                // CALLBACK: После выбора → следующий вопрос
+                proceedToNextQuestion();
+            });
+        } else {
+            // Если второе место - бот
             selectTerritory(secondPlace.playerId, 1);
-        }, 3000);
-    }
-    
+            // После выбора бота → следующий вопрос
+            proceedToNextQuestion();
+        }
+    }, 2000);
+}
+
+// НОВАЯ функция для перехода к следующему вопросу
+function proceedToNextQuestion() {
     setTimeout(() => {
         if (gameState.zones.every(z => z.owner !== null)) {
             startBattlePhase();
         } else {
             showTerritoryQuestion();
         }
-    }, 5000);
+    }, 1000);
 }
 
 // ============================================
@@ -488,12 +560,13 @@ function selectTerritory(playerId, count) {
 // РУЧНОЙ ВЫБОР ЗОН ИГРОКОМ
 // ============================================
 
-function enableZoneSelection(playerId, count) {
+function enableZoneSelection(playerId, count, callback) {
     const player = gameState.players[playerId];
     
     gameState.waitingForZoneSelection = true;
     gameState.zonesToSelect = count;
     gameState.selectingPlayer = playerId;
+    gameState.selectionCallback = callback; // НОВОЕ: сохраняем callback
     
     updateGameStatus(`${player.name}: выберите ${count} соседнюю зону`);
     
@@ -505,6 +578,7 @@ function highlightSelectableZones(playerId) {
     const player = gameState.players[playerId];
     const availableZones = [];
     
+    // Сначала ищем граничащие зоны
     player.territories.forEach(terrId => {
         const adjacent = getAdjacentZones(terrId);
         adjacent.forEach(zoneId => {
@@ -515,10 +589,22 @@ function highlightSelectableZones(playerId) {
         });
     });
     
+    // НОВОЕ: Если нет граничащих зон → разрешаем любую свободную
+    if (availableZones.length === 0) {
+        console.log('⚠️ Нет граничащих зон! Разрешаем выбрать любую свободную зону');
+        gameState.zones.forEach(zone => {
+            if (zone.owner === null) {
+                availableZones.push(zone.id);
+            }
+        });
+    }
+    
     // Добавляем класс для подсветки
     availableZones.forEach(zoneId => {
         const zoneElement = document.getElementById(`zone-${zoneId}`);
-        zoneElement.classList.add('selectable');
+        if (zoneElement) {
+            zoneElement.classList.add('selectable');
+        }
     });
     
     console.log('✨ Доступные зоны:', availableZones);
@@ -883,11 +969,22 @@ function simulateBattleAnswers(attacker, defender, targetZone, question) {
     console.log(`Ответы: ${attacker.name}=${attackerAnswer}, ${defender.name}=${defenderAnswer}`);
     
     hideQuestion();
-    hideBattleIndicator();
-    
-    const correctLetter = String.fromCharCode(65 + question.correctAnswer);
-    const attackerCorrect = attackerAnswer === correctLetter;
-    const defenderCorrect = defenderAnswer === correctLetter;
+hideBattleIndicator();
+
+const correctLetter = String.fromCharCode(65 + question.correctAnswer);
+const attackerCorrect = attackerAnswer === correctLetter;
+const defenderCorrect = defenderAnswer === correctLetter;
+
+// НОВОЕ: Подсвечиваем кнопки цветами игроков
+highlightAnswersByPlayers(
+    {playerId: attacker.id, answer: attackerAnswer},
+    {playerId: defender.id, answer: defenderAnswer},
+    question
+);
+
+// Показываем результат через 3 секунды
+setTimeout(() => {
+    clearAnswerHighlights();
     
     // НОВАЯ ЛОГИКА: если оба ответили одинаково
     if (attackerAnswer === defenderAnswer) {
@@ -900,15 +997,12 @@ function simulateBattleAnswers(attacker, defender, targetZone, question) {
     }
     
     if (attackerCorrect && !defenderCorrect) {
-        // Атакующий выиграл - захват территории
         transferZoneWithPoints(targetZone.id, attacker.id, defender.id);
         updateGameStatus(`${attacker.name} захватил зону!`);
     } else if (!attackerCorrect && defenderCorrect) {
-        // Защитник выиграл - защита
         defender.score += 100;
         updateGameStatus(`${defender.name} защитил зону!`);
     } else {
-        // Ничья - зона остаётся
         updateGameStatus(`Ничья! Зона остаётся у ${defender.name}`);
     }
     
@@ -918,6 +1012,62 @@ function simulateBattleAnswers(attacker, defender, targetZone, question) {
     setTimeout(() => {
         performAttack();
     }, 2000);
+}, 3000);
+
+}
+
+// ============================================
+// ПОДСВЕТКА ОТВЕТОВ ЦВЕТАМИ ИГРОКОВ
+// ============================================
+
+function highlightAnswersByPlayers(answer1, answer2, question) {
+    const buttons = document.querySelectorAll('.option-btn');
+    
+    // Считаем сколько раз выбран каждый ответ
+    const answerCounts = {};
+    [answer1, answer2].forEach(ans => {
+        if (!answerCounts[ans.answer]) {
+            answerCounts[ans.answer] = [];
+        }
+        answerCounts[ans.answer].push(ans.playerId);
+    });
+    
+    // Подсвечиваем кнопки
+    buttons.forEach((btn, index) => {
+        const letter = String.fromCharCode(65 + index);
+        
+        if (answerCounts[letter]) {
+            const playerIds = answerCounts[letter];
+            
+            if (playerIds.length === 1) {
+                // Один игрок выбрал этот ответ
+                const player = gameState.players[playerIds[0]];
+                btn.style.background = `linear-gradient(135deg, ${player.color}, ${player.color})`;
+                btn.style.border = `3px solid ${player.color}`;
+                btn.style.boxShadow = `0 0 20px ${player.color}`;
+            } else if (playerIds.length === 2) {
+                // Оба игрока выбрали этот ответ - градиент 50/50
+                const player1 = gameState.players[playerIds[0]];
+                const player2 = gameState.players[playerIds[1]];
+                btn.style.background = `linear-gradient(90deg, ${player1.color} 50%, ${player2.color} 50%)`;
+                btn.style.border = `3px solid white`;
+                btn.style.boxShadow = `0 0 20px rgba(255, 255, 255, 0.8)`;
+            }
+            
+            // Добавляем анимацию
+            btn.style.transform = 'scale(1.1)';
+        }
+    });
+}
+
+function clearAnswerHighlights() {
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach(btn => {
+        btn.style.background = 'linear-gradient(135deg, #3498db, #2980b9)';
+        btn.style.border = 'none';
+        btn.style.boxShadow = 'none';
+        btn.style.transform = 'scale(1)';
+    });
 }
 
 function showTieBreaker(attacker, defender, targetZone) {
@@ -1103,30 +1253,48 @@ function handleZoneClick(zoneId) {
         const zone = gameState.zones.find(z => z.id === zoneId);
         const player = gameState.players[gameState.selectingPlayer];
         
-        // Проверяем что зона доступна для выбора
-        const isAdjacent = player.territories.some(terrId => 
-            areZonesAdjacent(terrId, zoneId)
-        );
+       // Проверяем что зона доступна для выбора
+const isAdjacent = player.territories.some(terrId => 
+    areZonesAdjacent(terrId, zoneId)
+);
+
+// НОВОЕ: Проверяем есть ли вообще граничащие зоны
+const hasAdjacentZones = gameState.zones.some(z => {
+    if (z.owner !== null) return false;
+    return player.territories.some(terrId => areZonesAdjacent(terrId, z.id));
+});
+
+// Разрешаем выбор если:
+// 1. Зона свободна И граничит с территорией
+// 2. ИЛИ зона свободна И нет других граничащих зон (можно выбрать любую)
+const canSelect = zone.owner === null && (isAdjacent || !hasAdjacentZones);
+
+if (canSelect) {
+    // Захватываем зону
+    claimZone(gameState.selectingPlayer, zoneId);
+    gameState.zonesToSelect--;
+    
+    if (gameState.zonesToSelect <= 0) {
+        // Все зоны выбраны
+        gameState.waitingForZoneSelection = false;
+        removeZoneHighlights();
+        updateGameStatus('Выбор завершён');
         
-        if (zone.owner === null && isAdjacent) {
-            // Захватываем зону
-            claimZone(gameState.selectingPlayer, zoneId);
-            gameState.zonesToSelect--;
-            
-            if (gameState.zonesToSelect <= 0) {
-                // Все зоны выбраны
-                gameState.waitingForZoneSelection = false;
-                removeZoneHighlights();
-                updateGameStatus('Выбор завершён');
-            } else {
-                // Обновляем подсветку
-                removeZoneHighlights();
-                highlightSelectableZones(gameState.selectingPlayer);
-                updateGameStatus(`${player.name}: выберите ещё ${gameState.zonesToSelect} зону`);
-            }
-        } else {
-            console.log('❌ Эта зона недоступна');
+        // НОВОЕ: Вызываем callback если он есть
+        if (gameState.selectionCallback) {
+            const callback = gameState.selectionCallback;
+            gameState.selectionCallback = null;
+            callback();
         }
+    } else {
+        // Обновляем подсветку
+        removeZoneHighlights();
+        highlightSelectableZones(gameState.selectingPlayer);
+        updateGameStatus(`${player.name}: выберите ещё ${gameState.zonesToSelect} зону`);
+    }
+} else {
+    console.log('❌ Эта зона недоступна');
+}
     }
     
     // Если ждём выбора цели для атаки
@@ -1135,6 +1303,71 @@ function handleZoneClick(zoneId) {
     }
 }
 
+// ============================================
+// ТАЙМЕР
+// ============================================
 
+let timerInterval = null;
+let timeLeft = 0;
 
-console.log('✅ game.js загружен');
+function startTimer(seconds) {
+    console.log('⏱️ Запускаем таймер:', seconds, 'секунд');
+    timeLeft = seconds;
+    updateTimerDisplay();
+    
+    const timerElement = document.getElementById('timer');
+    if (timerElement) {
+        timerElement.classList.remove('hidden');
+    } else {
+        console.error('❌ Элемент timer не найден!');
+        return;
+    }
+    
+    // Очищаем предыдущий таймер если был
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        
+        if (timeLeft <= 0) {
+            stopTimer();
+            handleTimeOut();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    console.log('⏹️ Останавливаем таймер');
+    
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    
+    const timerElement = document.getElementById('timer');
+    if (timerElement) {
+        timerElement.classList.add('hidden');
+    }
+}
+
+function updateTimerDisplay() {
+    const timerValue = document.getElementById('timer-value');
+    if (timerValue) {
+        timerValue.textContent = timeLeft;
+    }
+}
+
+function handleTimeOut() {
+    console.log('⏰ Время вышло!');
+    
+    // Автоматически генерируем ответы если время вышло
+    if (gameState.phase === 'TERRITORY_SELECTION' && gameState.currentQuestion) {
+        console.log('⚠️ Время истекло, генерируем автоматический ответ');
+        simulateBotAnswersOld(gameState.currentQuestion);
+    }
+}
+
+console.log('✅ game.js загружен')
